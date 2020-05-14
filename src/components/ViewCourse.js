@@ -1,93 +1,91 @@
-import React, { Component } from "react";
+import React, { Fragment } from "react";
+
+// DR: Newly created items
+import ErrorPage from "./errors/ErrorPage"; // Expects one prop named message
+import Youtube from "./common/Youtube"; // Also one prop named link
+import Stars from "./common/Stars"; // Also one prop named rating
+import Comments from "./common/Comments";
+
 import { useParams, withRouter } from "react-router-dom";
 import { connect } from "react-redux";
 import Button from "./common/Button";
 
-class ViewCourse extends Component {
-  state = {
-    showComments: false,
-  };
+// DR: Toogles a boolean value located @store.viewCourse
+import { toggleComments } from "../actions";
+import { SHOW_COMMENTS } from "../actions/types";
 
-  handleClick = () => {
-    this.setState({
-      showComments: !this.state.showComments,
-    });
-  };
+// Deconstructs from mapStoreToProps and map
+function ViewCourse({ list, toggleComments }) {
+  // Get URL Id parameter
+  const { courseId } = useParams();
 
-  renderComments = (course) => {
-    return course.comments.map((comment) => {
-      return (
-        <div className="box">
-          <p>{comment.user}: </p>
-          <p>{comment.text}</p>
+  // Find the course with the 'props.list' array that passed from redux.
+  const course = list.find((course) => course.id == courseId);
+
+  // Probably a better solution, possible to cause errors.
+  const {
+    title,
+    resourceAuthor,
+    link,
+    rating,
+    categories,
+    posterName,
+    comments,
+    cohort,
+    summary,
+    showComments,
+  } = course ? course : <div />; // <- Probably a better way of handling the issue. 
+  //  console.log(props)
+  return (
+    <Fragment>
+      {/* If course does exist then show it else 404 */}
+      
+      {course ? (
+        <div>
+          <h3>{title}</h3>
+
+          <h4>{resourceAuthor}</h4>
+
+          <div style={myStyles.row}>
+            <p>Shared by: {posterName}</p>
+            <p>Cohort: {cohort}</p>
+          </div>
+
+          <p>{summary}</p>
+
+          <Youtube link={link} />
+
+          <div style={myStyles.row}>
+            <p>
+              <a href={link}>View Resource</a>
+            </p>
+            <Stars rating={rating} />
+          </div>
+
+          {categories ? (
+            <div style={myStyles.row}>{categories.join(", ")}</div>
+          ) : null}
+
+          {/* A Redux action creator lives here by the name of toggleComments */}
+          <Button onClick={() => toggleComments(showComments)} buttonStyle={myStyles.button}>
+            {showComments ? "Hide Comments" : "Show Comments"}
+          </Button>
+
+          {/* showComments from redux */}
+          {showComments ? <Comments comments={comments} /> : null}
         </div>
-      );
-    });
-  };
-
-  renderStars = (course) => {
-    const rating = course.rating;
-    let stars = "";
-    for (let i = 0; i < rating; i++) {
-      stars += "★ ";
-    }
-    return stars;
-  };
-
-  renderYoutube = (course) => {
-    if (course.link.indexOf("youtube") >= 0) {
-      const videoIdIndex = course.link.indexOf("?v=");
-      const videoId = course.link.substring(videoIdIndex + 3);
-      console.log(videoId);
-      return (
-        <iframe
-          title="video"
-          width="560"
-          height="315"
-          src={`https://www.youtube.com/embed/${videoId}`}
-          frameborder="0"
-          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-        ></iframe>
-      );
-    }
-    // else if(try for youtube share link)
-  };
-
-  render() {
-    // const { course } = this.props;
-    const courseId = parseInt(this.props.match.params.courseId);
-    const course = this.props.resources.list.find(
-      (item) => item.id === courseId
-    );
-    console.log(courseId);
-    return (
-      <div>
-        <h3>{course.title}</h3>
-        <h4>{course.resourceAuthor}</h4>
-        <div style={myStyles.row}>
-          <p>Shared by: {course.posterName}</p>
-          <p>Cohort: {course.cohort}</p>
-        </div>
-        <p>{course.summary}</p>
-        {this.renderYoutube(course)}
-        <div style={myStyles.row}>
-          <p>
-            <a href={course.link}>View Resource</a>
-          </p>
-          <p>rating: {this.renderStars(course)}</p>
-        </div>
-        {course.categories.length ? (
-          <div style={myStyles.row}>{course.categories.join(", ")}</div>
-        ) : null}
-        <Button onClick={this.handleClick} buttonStyle={myStyles.button}>
-          {this.state.showComments ? "Hide Comments" : "Show Comments"}
-        </Button>
-        {this.state.showComments ? this.renderComments(course) : null}
-      </div>
-    );
-  }
+      ) : (
+        <ErrorPage message={"404 Not Found..."} />
+      )}
+    </Fragment>
+  );
 }
+
+// DR: Attempting to componentize the above render youtube function
+
+// DR: Attempting to componentize the above render stars function (Readability)
+
+// DR: Attempting to componentize the above render stars function
 
 const myStyles = {
   row: {
@@ -100,6 +98,7 @@ const myStyles = {
     selfAlign: "center",
     justifyContent: "space-evenly",
   },
+
   container: {
     display: "flex",
     flex: 1,
@@ -117,6 +116,7 @@ const myStyles = {
     paddingTop: 16,
     paddingBottom: 16,
   },
+
   button: {
     marginTop: 16,
     backgroundColor: "blue",
@@ -124,10 +124,17 @@ const myStyles = {
   },
 };
 
-const mapStoreToProps = (store) => {
-  return {
-    resources: store.resources,
-  };
-};
+const mapActionsToProps = {
+  toggleComments
+}
+ 
 
-export default connect(mapStoreToProps)(withRouter(ViewCourse));
+const mapStoreToProps = (store) => ({
+  list: store.resources.list,
+  showComments: store.viewCourse.showComments,
+});
+
+export default connect(
+  mapStoreToProps,
+  mapActionsToProps
+)(withRouter(ViewCourse));
